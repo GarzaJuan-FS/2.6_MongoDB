@@ -5,7 +5,7 @@ const gameSchema = new mongoose.Schema(
   {
     _id: {
       type: String,
-      default: () => nanoid(8), // 8-character short ID
+      default: () => nanoid(4), // shorter ID
     },
     title: { type: String, required: true },
     genre: { type: String, required: true },
