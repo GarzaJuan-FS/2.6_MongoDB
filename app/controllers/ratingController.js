@@ -20,6 +20,15 @@ exports.getRatingById = async (req, res) => {
 };
 
 exports.createRating = async (req, res) => {
+  const { gameId, ratingText, rating } = req.body;
+
+  // Check if gameId exists
+  if (!gameId) {
+    return res.status(400).json({
+      error: "gameId is required",
+    });
+  }
+
   try {
     const newRating = new Rating(req.body);
     const savedRating = await newRating.save();
