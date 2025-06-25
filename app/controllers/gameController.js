@@ -2,8 +2,68 @@ const Game = require("../models/Game");
 
 exports.getAllGames = async (req, res) => {
   try {
-    const games = await Game.find();
-    res.json(games);
+    // Build query object
+    let query = {};
+
+    // Query operators - example: filter by genre and rating range
+    if (req.query.genre) {
+      query.genre = { $regex: req.query.genre, $options: "i" }; // Case-insensitive search
+    }
+
+    if (req.query.minRating) {
+      query.rating = { $gte: parseFloat(req.query.minRating) };
+    }
+
+    if (req.query.maxRating) {
+      query.rating = { ...query.rating, $lte: parseFloat(req.query.maxRating) };
+    }
+
+    // Pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Select fields (exclude sensitive data)
+    let selectFields = "";
+    if (req.query.select) {
+      selectFields = req.query.select.split(",").join(" ");
+    } else if (req.query.exclude) {
+      // Example: exclude description and developer
+      const excludeFields = req.query.exclude.split(",");
+      selectFields = excludeFields.map((field) => `-${field}`).join(" ");
+    }
+
+    // Sort
+    let sortBy = {};
+    if (req.query.sort) {
+      const sortField = req.query.sort.startsWith("-")
+        ? req.query.sort.slice(1)
+        : req.query.sort;
+      const sortOrder = req.query.sort.startsWith("-") ? -1 : 1;
+      sortBy[sortField] = sortOrder;
+    } else {
+      sortBy = { name: 1 }; // Default sort by name ascending
+    }
+
+    // Execute query
+    const games = await Game.find(query)
+      .select(selectFields)
+      .sort(sortBy)
+      .skip(skip)
+      .limit(limit);
+
+    // Get total count for pagination info
+    const total = await Game.countDocuments(query);
+
+    res.json({
+      games,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
