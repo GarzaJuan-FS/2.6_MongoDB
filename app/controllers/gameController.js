@@ -5,7 +5,7 @@ exports.getAllGames = async (req, res) => {
     // Build query object
     let query = {};
 
-    // Query operators - example: filter by genre and rating range
+    // Query operators
     if (req.query.genre) {
       query.genre = { $regex: req.query.genre, $options: "i" }; // Case-insensitive search
     }
