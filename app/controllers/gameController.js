@@ -28,7 +28,7 @@ exports.getAllGames = async (req, res) => {
     if (req.query.select) {
       selectFields = req.query.select.split(",").join(" ");
     } else if (req.query.exclude) {
-      // Example: exclude description and developer
+      // Ex: exclude description and developer
       const excludeFields = req.query.exclude.split(",");
       selectFields = excludeFields.map((field) => `-${field}`).join(" ");
     }
