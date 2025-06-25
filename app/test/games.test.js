@@ -47,7 +47,6 @@ const mongoose = require("mongoose");
 const app = require("../app");
 const Game = require("../models/Game");
 
-// Rest of your test code remains the same...
 describe("Games API", () => {
   // Mock data
   const mockGames = [
