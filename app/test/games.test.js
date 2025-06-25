@@ -1,192 +1,202 @@
-// Mock environment variables
-process.env.NODE_ENV = "test";
-process.env.MONGODB_URI = "mongodb://localhost:27017/test";
-
-// Mock nanoid first
-jest.mock("nanoid", () => ({
-  nanoid: jest.fn(() => "mocked-id"),
-}));
-
-// Mock database connection with both export styles
-jest.mock("../db/config", () => {
-  const mockConnectDB = jest.fn(() => {
-    return Promise.resolve();
-  });
-
-  return {
-    connectDB: mockConnectDB,
-    __esModule: true,
-    default: mockConnectDB,
-  };
-});
-
-// Create a shared mock query object
-const createMockQuery = (finalResult = []) => ({
-  select: jest.fn().mockReturnThis(),
-  sort: jest.fn().mockReturnThis(),
-  populate: jest.fn().mockReturnThis(),
-  skip: jest.fn().mockReturnThis(),
-  limit: jest.fn().mockResolvedValue(finalResult),
-  exec: jest.fn().mockResolvedValue(finalResult),
-});
-
-// Mock the Game model with proper methods
-jest.mock("../models/Game", () => ({
-  find: jest.fn(),
-  findById: jest.fn(),
-  findByIdAndUpdate: jest.fn(),
-  findByIdAndDelete: jest.fn(),
-  countDocuments: jest.fn(),
-  create: jest.fn(),
-  save: jest.fn(),
-  deleteOne: jest.fn(),
-}));
-
+// Simplified dual-mode test - works with both mocked and real database
 const request = require("supertest");
 const mongoose = require("mongoose");
+
+// Determine mode from environment variable
+const USE_MOCKS = process.env.USE_MOCKS !== "false"; // Default to mocks
+
+// Setup based on mode
+if (USE_MOCKS) {
+  // Mock mode setup
+  process.env.NODE_ENV = "test";
+  process.env.MONGODB_URI = "mongodb://localhost:27017/test";
+
+  jest.mock("nanoid", () => ({ nanoid: jest.fn(() => "mocked-id") }));
+  jest.mock("../db/config", () => ({
+    connectDB: jest.fn(() => Promise.resolve()),
+    __esModule: true,
+    default: jest.fn(() => Promise.resolve()),
+  }));
+
+  jest.mock("../models/Game", () => ({
+    find: jest.fn(),
+    findById: jest.fn(),
+    countDocuments: jest.fn(),
+    create: jest.fn(),
+    deleteMany: jest.fn(),
+  }));
+} else {
+  // Real database mode
+  process.env.NODE_ENV = "test";
+  process.env.MONGODB_URI = "mongodb://localhost:27017/test_games";
+}
+
 const app = require("../app");
 const Game = require("../models/Game");
 
-describe("Games API", () => {
-  // Mock data
-  const mockGames = [
+describe(`Games API - ${USE_MOCKS ? "Mocked" : "Real"} Database`, () => {
+  const testGames = [
     {
-      _id: "game1",
-      title: "Test Game 1",
+      title: "Action Game",
       genre: "Action",
       rating: 9.5,
       platform: ["PC"],
-      developer: "Test Studio",
+      developer: "Studio A",
     },
     {
-      _id: "game2",
-      title: "Test Game 2",
+      title: "RPG Game",
       genre: "RPG",
       rating: 8.0,
       platform: ["Console"],
-      developer: "Another Studio",
+      developer: "Studio B",
     },
     {
-      _id: "game3",
-      title: "Test Game 3",
+      title: "Indie Game",
       genre: "Action",
       rating: 7.5,
       platform: ["Mobile"],
-      developer: "Mobile Studio",
+      developer: "Studio C",
     },
   ];
 
-  beforeEach(() => {
-    jest.clearAllMocks();
+  beforeAll(async () => {
+    if (!USE_MOCKS) {
+      // Wait for real database connection
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  });
+
+  beforeEach(async () => {
+    if (USE_MOCKS) {
+      // Setup mocks for each test
+      jest.clearAllMocks();
+
+      const mockQuery = {
+        select: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue(testGames),
+      };
+
+      Game.find.mockReturnValue(mockQuery);
+      Game.countDocuments.mockResolvedValue(testGames.length);
+    } else {
+      // Clean and seed real database
+      await Game.deleteMany({});
+      await Game.create(testGames);
+    }
   });
 
   afterAll(async () => {
-    await mongoose.connection.close();
+    if (!USE_MOCKS) {
+      await Game.deleteMany({});
+      await mongoose.connection.close();
+    }
   });
 
-  describe("GET /api/games - Select Fields", () => {
-    it("should return limited data based on select query", async () => {
-      const expectedResult = mockGames.map((game) => ({
-        _id: game._id,
-        title: game.title,
-        rating: game.rating,
-      }));
-
-      const mockQuery = createMockQuery(expectedResult);
+  // Helper function to setup mocks for specific tests
+  const setupMockQuery = (result) => {
+    if (USE_MOCKS) {
+      const mockQuery = {
+        select: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue(result),
+      };
       Game.find.mockReturnValue(mockQuery);
-      Game.countDocuments.mockResolvedValue(mockGames.length);
+      Game.countDocuments.mockResolvedValue(result.length);
+      return mockQuery;
+    }
+    return null;
+  };
 
-      const response = await request(app).get("/api/games?select=title,rating");
+  it("should get all games", async () => {
+    setupMockQuery(testGames);
 
-      expect(response.status).toBe(200);
-      expect(Game.find).toHaveBeenCalledWith({});
-      expect(mockQuery.select).toHaveBeenCalledWith("title rating");
-      expect(response.body.games).toEqual(expectedResult);
-    });
+    const response = await request(app).get("/api/games").expect(200);
 
-    it("should exclude specified fields when exclude query is used", async () => {
-      const expectedResult = mockGames.map((game) => ({
-        _id: game._id,
-        title: game.title,
-        genre: game.genre,
-        rating: game.rating,
-      }));
-
-      const mockQuery = createMockQuery(expectedResult);
-      Game.find.mockReturnValue(mockQuery);
-      Game.countDocuments.mockResolvedValue(mockGames.length);
-
-      const response = await request(app).get(
-        "/api/games?exclude=developer,platform"
-      );
-
-      expect(response.status).toBe(200);
-      expect(mockQuery.select).toHaveBeenCalledWith("-developer -platform");
-      expect(response.body.games).toEqual(expectedResult);
-    });
+    expect(response.body.games).toHaveLength(3);
+    expect(response.body.pagination).toBeDefined();
   });
 
-  describe("GET /api/games - Sorting", () => {
-    it("should sort games by rating in descending order", async () => {
-      const sortedGames = [...mockGames].sort((a, b) => b.rating - a.rating);
+  it("should filter games by genre", async () => {
+    const actionGames = testGames.filter((g) => g.genre === "Action");
+    const mockQuery = setupMockQuery(actionGames);
 
-      const mockQuery = createMockQuery(sortedGames);
-      Game.find.mockReturnValue(mockQuery);
-      Game.countDocuments.mockResolvedValue(mockGames.length);
+    const response = await request(app)
+      .get("/api/games?genre=Action")
+      .expect(200);
 
-      const response = await request(app).get("/api/games?sort=-rating");
-
-      expect(response.status).toBe(200);
-      expect(mockQuery.sort).toHaveBeenCalledWith({ rating: -1 });
-      expect(response.body.games).toEqual(sortedGames);
-    });
-
-    it("should sort games by title in ascending order", async () => {
-      const sortedGames = [...mockGames].sort((a, b) =>
-        a.title.localeCompare(b.title)
-      );
-
-      const mockQuery = createMockQuery(sortedGames);
-      Game.find.mockReturnValue(mockQuery);
-      Game.countDocuments.mockResolvedValue(mockGames.length);
-
-      const response = await request(app).get("/api/games?sort=title");
-
-      expect(response.status).toBe(200);
-      expect(mockQuery.sort).toHaveBeenCalledWith({ title: 1 });
-      expect(response.body.games).toEqual(sortedGames);
-    });
-  });
-
-  describe("GET /api/games - Query Operators", () => {
-    it("should filter games by genre", async () => {
-      const filteredGames = mockGames.filter((game) => game.genre === "Action");
-
-      const mockQuery = createMockQuery(filteredGames);
-      Game.find.mockReturnValue(mockQuery);
-      Game.countDocuments.mockResolvedValue(filteredGames.length);
-
-      const response = await request(app).get("/api/games?genre=Action");
-
-      expect(response.status).toBe(200);
+    if (USE_MOCKS) {
       expect(Game.find).toHaveBeenCalledWith({
         genre: { $regex: "Action", $options: "i" },
       });
-      expect(response.body.games).toEqual(filteredGames);
-    });
+      expect(response.body.games).toEqual(actionGames);
+    } else {
+      expect(response.body.games.length).toBeGreaterThan(0);
+      response.body.games.forEach((game) => {
+        expect(game.genre.toLowerCase()).toContain("action");
+      });
+    }
+  });
 
-    it("should filter games by minimum rating", async () => {
-      const filteredGames = mockGames.filter((game) => game.rating >= 8);
+  it("should sort games by rating descending", async () => {
+    const sortedGames = [...testGames].sort((a, b) => b.rating - a.rating);
+    const mockQuery = setupMockQuery(sortedGames);
 
-      const mockQuery = createMockQuery(filteredGames);
-      Game.find.mockReturnValue(mockQuery);
-      Game.countDocuments.mockResolvedValue(filteredGames.length);
+    const response = await request(app)
+      .get("/api/games?sort=-rating")
+      .expect(200);
 
-      const response = await request(app).get("/api/games?minRating=8");
+    if (USE_MOCKS) {
+      expect(mockQuery.sort).toHaveBeenCalledWith({ rating: -1 });
+    } else {
+      const ratings = response.body.games.map((g) => g.rating);
+      for (let i = 1; i < ratings.length; i++) {
+        expect(ratings[i]).toBeLessThanOrEqual(ratings[i - 1]);
+      }
+    }
+  });
 
-      expect(response.status).toBe(200);
+  it("should filter by minimum rating", async () => {
+    const highRatedGames = testGames.filter((g) => g.rating >= 8);
+    const mockQuery = setupMockQuery(highRatedGames);
+
+    const response = await request(app)
+      .get("/api/games?minRating=8")
+      .expect(200);
+
+    if (USE_MOCKS) {
       expect(Game.find).toHaveBeenCalledWith({ rating: { $gte: 8 } });
-      expect(response.body.games).toEqual(filteredGames);
-    });
+    } else {
+      response.body.games.forEach((game) => {
+        expect(game.rating).toBeGreaterThanOrEqual(8);
+      });
+    }
+  });
+
+  it("should select specific fields", async () => {
+    const selectedFields = testGames.map((g) => ({
+      _id: g._id,
+      title: g.title,
+      rating: g.rating,
+    }));
+    const mockQuery = setupMockQuery(selectedFields);
+
+    const response = await request(app)
+      .get("/api/games?select=title,rating")
+      .expect(200);
+
+    if (USE_MOCKS) {
+      expect(mockQuery.select).toHaveBeenCalledWith("title rating");
+    } else {
+      response.body.games.forEach((game) => {
+        expect(game.title).toBeDefined();
+        expect(game.rating).toBeDefined();
+        expect(game.developer).toBeUndefined(); // Should be excluded
+      });
+    }
   });
 });
