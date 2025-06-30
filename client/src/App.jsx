@@ -43,7 +43,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>🎮 Game Reviews App</h1>
+        <h1>🎮 Game Glance 🎮 </h1>
         <p>Discover, review, and rate your favorite games</p>
       </header>
 
