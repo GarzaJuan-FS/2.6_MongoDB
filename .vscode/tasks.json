@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Full-Stack Dev",
+      "type": "shell",
+      "command": "cd /Users/juan.garza/Desktop/Fullsail/WDV353/2.7_MongoDBIntegration/Game_Reviews && (cd Server && npm run dev) & (cd client && npm run dev)",
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}

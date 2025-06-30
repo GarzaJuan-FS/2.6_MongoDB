@@ -1,0 +1,150 @@
+.game-list {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.game-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.game-list-header h2 {
+  color: #333;
+  margin: 0;
+}
+
+.create-btn {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.create-btn:hover {
+  background-color: #45a049;
+}
+
+.loading,
+.error {
+  text-align: center;
+  padding: 40px;
+  font-size: 18px;
+}
+
+.error {
+  color: #f44336;
+}
+
+.no-games {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+}
+
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 24px;
+}
+
+.game-card {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.game-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.game-title {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.4em;
+  flex: 1;
+  margin-right: 10px;
+}
+
+.game-rating {
+  background: #ff9800;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.game-details {
+  margin-bottom: 15px;
+}
+
+.game-details p {
+  margin: 6px 0;
+  color: #555;
+  font-size: 14px;
+}
+
+.game-description {
+  color: #666;
+  font-style: italic;
+  margin: 15px 0;
+  line-height: 1.4;
+  border-left: 3px solid #e0e0e0;
+  padding-left: 12px;
+}
+
+.game-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.view-btn,
+.delete-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.view-btn {
+  background-color: #2196f3;
+  color: white;
+  flex: 1;
+}
+
+.view-btn:hover {
+  background-color: #1976d2;
+}
+
+.delete-btn {
+  background-color: #f44336;
+  color: white;
+}
+
+.delete-btn:hover {
+  background-color: #d32f2f;
+}

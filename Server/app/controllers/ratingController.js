@@ -122,6 +122,19 @@ exports.updateRating = async (req, res) => {
   }
 };
 
+exports.getRatingsByGame = async (req, res) => {
+  try {
+    const gameId = req.params.gameId;
+    const ratings = await Rating.find({ gameId }).populate("gameId");
+    res.json({
+      ratings,
+      count: ratings.length,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.deleteRating = async (req, res) => {
   try {
     const deletedRating = await Rating.findByIdAndDelete(req.params.id);
